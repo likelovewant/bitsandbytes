@@ -1,4 +1,4 @@
-# `bitsandbytes`
+# `bitsandbytes ROCm on Windows`
 
 [![Downloads](https://static.pepy.tech/badge/bitsandbytes)](https://pepy.tech/project/bitsandbytes) [![Downloads](https://static.pepy.tech/badge/bitsandbytes/month)](https://pepy.tech/project/bitsandbytes) [![Downloads](https://static.pepy.tech/badge/bitsandbytes/week)](https://pepy.tech/project/bitsandbytes)
 
@@ -26,9 +26,19 @@ pip install .
 **(Experimental) Build on windows tips for ROCm :**
 
 1, HIPSDK 6.2.4 
+
 2, Ninja, Cmake,
+
 3, add rocm/6.2/bin in the PATH
-4, `git clone https://github.com/likelovewant/bitsandbytes` , `git checkout rocm_enabled_multi_backend` or edit those changes on this repo into other fork or upstream `multibackend`.
+
+4, 
+```
+git clone https://github.com/likelovewant/bitsandbytes,
+git checkout rocm_enabled_multi_backend
+pip install -r requirements-dev.txt
+```  
+ or edit those changes on this repo into other fork or upstream `multibackend`.
+
 5, edit few lines in  csrc/ops.hip, csrc/ops_hip.cuh,include/Algo-Direct-Common.h (by comparint the difference on this repo and upstream) and grab CMakeLists.txt from this repo.
 
 Build use .
