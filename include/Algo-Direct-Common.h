@@ -86,7 +86,8 @@ struct DirectTraits
     {
         T Dn = xN - x0;
         T ifmax = Dn * scaler;
-        myassert((ifmax < std::numeric_limits<uint32>::max() - (Gap - 1)),
+        //myassert((ifmax < std::numeric_limits<uint32>::max() - (Gap - 1)), comment this due to the float covert issue 
+        myassert((static_cast<float>(ifmax) < static_cast<float>(std::numeric_limits<uint32>::max()) - static_cast<float>(Gap - 1)),
             "Problem unfeasible: index size exceeds uint32 capacity:"
             << " D[N] =" << Dn
             << ", H =" << scaler

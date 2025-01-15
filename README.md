@@ -23,6 +23,32 @@ make
 pip install .
 ```
 
+**(Experimental) Build on windows tips for ROCm :**
+
+1, HIPSDK 6.2.4 
+2, Ninja, Cmake,
+3, add rocm/6.2/bin in the PATH
+4, `git clone https://github.com/likelovewant/bitsandbytes` , `git checkout rocm_enabled_multi_backend` or edit those changes on this repo into other fork or upstream `multibackend`.
+5, edit few lines in  csrc/ops.hip, csrc/ops_hip.cuh,include/Algo-Direct-Common.h (by comparint the difference on this repo and upstream) and grab CMakeLists.txt from this repo.
+
+Build use .
+```
+cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -S .
+
+ninja
+
+```
+Change the arches in cmake file in line 210 as needed . eg, gfx1100 ,gfx1102..., 
+
+Build wheel , place builded `libbitsandbytes_rocm_nohipblaslt.dll` into `bitsandbytes\bitsandbytes`
+```
+python setup.py bdist_wheel
+
+```
+if you can't install it by pip , then unzip the wheel and place into pip install directory .
+Cureently , this is no torch for rocm available at windows. Not sure ,how to use it . 
+Note: amd don't support NF4 OR 4 BITS currently ,if you want enable hipblaslt , by comment the line 248 in cmakelists, `add_definitions(-DLEGACY_HIPBLAS_DIRECT=0)` or delete it .fix the conflicts bug in `hipcomon and hipblas`. (bugs will show when you build .) or keep use the no hipblaslt version.
+
 **For more details, please head to the official documentation page:**
 
 **[https://huggingface.co/docs/bitsandbytes/main](https://huggingface.co/docs/bitsandbytes/main)**

@@ -10,8 +10,23 @@
 
 #include <stdio.h>
 #include <iostream>
-#include <unistd.h>
+//#include <unistd.h>
+// ops_hip.cuh
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>  // Windows 特定的头文件
+#else
+#include <unistd.h>   // Unix/Linux 特定的头文件
+#endif
 #include <assert.h>
+
+#ifdef max
+#undef max
+#endif
+#ifdef min
+#undef min
+#endif
+
 
 #include <hip/hip_runtime_api.h>
 #include <hip/hip_fp16.h>

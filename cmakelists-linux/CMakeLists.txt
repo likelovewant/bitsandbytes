@@ -23,8 +23,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-add_definitions(-DLEGACY_HIPBLAS_DIRECT=0)
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DLEGACY_HIPBLAS_DIRECT")
 # Define included source files
 set(CPP_FILES csrc/common.cpp csrc/cpu_ops.cpp csrc/pythonInterface.cpp)
 set(CUDA_FILES csrc/ops.cu csrc/kernels.cu)
@@ -57,7 +55,7 @@ if(${COMPUTE_BACKEND} STREQUAL "cuda")
     message(STATUS "NO_CUBLASLT := ${NO_CUBLASLT}")
 elseif(${COMPUTE_BACKEND} STREQUAL "hip")
     if(APPLE)
-        message(FATAL_ERROR "HIP is not supported on macOS" )
+	message(FATAL_ERROR "HIP is not supported on macOS" )
     endif()
     option(NO_CUBLASLT "Disable HIPBLASLT" OFF)
     set(BUILD_CUDA OFF)
@@ -76,6 +74,7 @@ else()
     set(BUILD_HIP OFF)
     set(BUILD_MPS OFF)
 endif()
+
 
 if(BUILD_CUDA)
     # NVCC normally will only work with MSVC up to 1939. VS2022 17.10+ starts using versions 1940+.
@@ -180,48 +179,24 @@ if(BUILD_CUDA)
     endif()
     add_compile_definitions(BUILD_CUDA)
 elseif(BUILD_HIP)
-    # Enable HIP language support
     enable_language(HIP)
-
-    # Set the HIP compiler to Clang
-    set(CMAKE_HIP_COMPILER "clang++")
-
-    # Find the HIP path from the environment variable HIP_PATH
-    if(NOT DEFINED ENV{HIP_PATH})
-        message(FATAL_ERROR "HIP_PATH environment variable is not set. Please set HIP_PATH to the root of your HIP installation.")
-    else()
-        set(HIP_PATH $ENV{HIP_PATH})
-    endif()
-
-    # Add HIP to the CMAKE_PREFIX_PATH
-    list(APPEND CMAKE_PREFIX_PATH ${HIP_PATH})
-
-    # Find HIP packages
-    find_package(hip REQUIRED)
-    find_package(hipblas REQUIRED)
-    find_package(hiprand REQUIRED)
-    find_package(hipsparse REQUIRED)
-    find_package(rocBLAS REQUIRED)
-
-    # Set HIP architectures
-    if(DEFINED BNB_ROCM_ARCH)
-        set(CMAKE_HIP_ARCHITECTURES ${BNB_ROCM_ARCH})
-    else()
-        set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx942;gfx1031;gfx1032;gfx1100;gfx1102;gfx1103")
-    endif()
-
     message(STATUS "HIP Compiler: ${CMAKE_HIP_COMPILER}")
+    if(DEFINED BNB_ROCM_ARCH)
+      set(CMAKE_HIP_ARCHITECTURES ${BNB_ROCM_ARCH})
+    else()
+      if (NOT AMDGPU_TARGETS AND NOT CMAKE_HIP_ARCHITECTURES)
+        set(CMAKE_HIP_ARCHITECTURES "gfx90a;gfx942;gfx1100")
+      elseif (AMDGPU_TARGETS AND NOT CMAKE_HIP_ARCHITECTURES)
+        set(CMAKE_HIP_ARCHITECTURES ${AMDGPU_TARGETS})
+      endif()
+    endif()
     message(STATUS "HIP Targets: ${CMAKE_HIP_ARCHITECTURES}")
 
-    # Add HIP files to source files
     list(APPEND SRC_FILES ${HIP_FILES})
-
-    # Add library target
-    add_library(bitsandbytes SHARED ${SRC_FILES})
 
     string(APPEND BNB_OUTPUT_NAME "_rocm")
 
-    # Get HIP version
+    # get hip version
     execute_process(COMMAND hipconfig --version OUTPUT_VARIABLE HIP_CONFIG_VERSION)
     string(REGEX MATCH "[0-9]+\\.[0-9]+" HIP_VERSION "${HIP_CONFIG_VERSION}")
     string(REPLACE "." "" HIP_VERSION_SHORT "${HIP_VERSION}")
@@ -230,30 +205,9 @@ elseif(BUILD_HIP)
     if(NO_CUBLASLT OR HIP_VERSION VERSION_LESS "6.1")
         string(APPEND BNB_OUTPUT_NAME "_nohipblaslt")
     endif()
-
-    # Add HIP compile definitions
     add_compile_definitions(__HIP_PLATFORM_AMD__)
     add_compile_definitions(__HIP_PLATFORM_HCC__)
     add_compile_definitions(BUILD_HIP)
-
-    # Set source files properties for HIP
-    set_source_files_properties(${HIP_FILES} PROPERTIES LANGUAGE HIP)
-    set_target_properties(bitsandbytes PROPERTIES LINKER_LANGUAGE CXX)
-
-    target_include_directories(bitsandbytes PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/include ${HIP_PATH}/include)
-    target_link_directories(bitsandbytes PRIVATE ${HIP_PATH}/lib)
-    # Link HIP libraries
-    target_link_libraries(bitsandbytes PUBLIC roc::hipblas hip::hiprand roc::hipsparse roc::rocblas)
-
-    add_definitions(-DLEGACY_HIPBLAS_DIRECT=0)
-    #  hipblas and hipcommon conflicts,disable hipblaslt
-
-    if(NO_CUBLASLT OR HIP_VERSION VERSION_LESS "6.1")
-        target_compile_definitions(bitsandbytes PUBLIC NO_HIPBLASLT)
-    else()
-        find_package(hipblaslt REQUIRED)
-        target_link_libraries(bitsandbytes PUBLIC roc::hipblaslt)
-    endif()
 elseif(BUILD_MPS)
     if(NOT APPLE)
         message(FATAL_ERROR "MPS is only supported on macOS" )
@@ -278,6 +232,7 @@ else()
     set(GPU_SOURCES)
 endif()
 
+
 if(WIN32)
     # Export all symbols
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -288,8 +243,10 @@ if(MSVC)
 endif()
 
 set_source_files_properties(${CPP_FILES} PROPERTIES LANGUAGE CXX)
+add_library(bitsandbytes SHARED ${SRC_FILES})
 target_compile_features(bitsandbytes PUBLIC cxx_std_14)
 target_include_directories(bitsandbytes PUBLIC csrc include)
+
 
 if(BUILD_CUDA)
     target_include_directories(bitsandbytes PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
@@ -305,7 +262,41 @@ if(BUILD_CUDA)
             CUDA_SEPARABLE_COMPILATION ON
     )
 endif()
+if(BUILD_HIP)
+    if(NOT DEFINED ENV{ROCM_PATH})
+      set(ROCM_PATH /opt/rocm)
+    else()
+      set(ROCM_PATH $ENV{ROCM_PATH})
+    endif()
+    list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH})
+    macro(find_package_and_print_version PACKAGE_NAME)
+      find_package("${PACKAGE_NAME}" ${ARGN})
+      message("${PACKAGE_NAME} VERSION: ${${PACKAGE_NAME}_VERSION}")
+    endmacro()
+    find_package_and_print_version(hipblas REQUIRED)
+    find_package_and_print_version(hiprand REQUIRED)
+    find_package_and_print_version(hipsparse REQUIRED)
 
+    ## hacky way of excluding hip::amdhip64 (with it linked many tests unexpectedly fail e.g. adam8bit because of inaccuracies)
+    set_target_properties(hip::host PROPERTIES INTERFACE_LINK_LIBRARIES "")
+    set_target_properties(hip-lang::host PROPERTIES INTERFACE_LINK_LIBRARIES "")
+    set(CMAKE_HIP_IMPLICIT_LINK_LIBRARIES "")
+
+    target_include_directories(bitsandbytes PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/include ${ROCM_PATH}/include /include)
+    target_link_directories(bitsandbytes PRIVATE ${ROCM_PATH}/lib /lib)
+    target_link_libraries(bitsandbytes PUBLIC roc::hipblas hip::hiprand roc::hipsparse)
+
+    target_compile_definitions(bitsandbytes PUBLIC BNB_USE_HIP)
+    set_source_files_properties(${HIP_FILES} PROPERTIES LANGUAGE HIP)
+    set_target_properties(bitsandbytes PROPERTIES LINKER_LANGUAGE CXX)
+
+    if(NO_CUBLASLT OR HIP_VERSION VERSION_LESS "6.1")
+	target_compile_definitions(bitsandbytes PUBLIC NO_HIPBLASLT)
+    else()
+	find_package(hipblaslt)
+        target_link_libraries(bitsandbytes PUBLIC roc::hipblaslt)
+    endif()
+endif()
 if(BUILD_MPS)
     add_dependencies(bitsandbytes metallib)
     target_link_libraries(bitsandbytes objc "-framework Foundation" "-framework Metal" "-framework MetalPerformanceShaders" "-framework MetalPerformanceShadersGraph")

@@ -1,0 +1,14 @@
+python setup.py bdist_wheel
+
+pip wheel .
+
+
+ls dist
+
+pip install dist/bitsandbytes-0.43.3.dev0-0.editable-cp310-cp310-win_amd64.whl
+
+
+pip show bitsandbytes
+
+
+pip install wheel setuptools

@@ -4,6 +4,10 @@
 //
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
+//#ifndef HIPBLASLT_INCLUDED
+//#define HIPBLASLT_INCLUDED
+//#include <hipblaslt/hipblaslt.h>  // hipblaslt.h include
+//#endif // HIPBLASLT_INCLUDED
 
 #include <ops_hip.cuh>
 #include <kernels_hip.cuh>
@@ -38,7 +42,7 @@ template <typename T> void estimateQuantiles(T *A, float *code, float offset, in
   int num_blocks = n/4096;
   num_blocks = n % 4096 == 0 ? num_blocks : num_blocks + 1;
 	CUDA_CHECK_RETURN(hipMemset(code, 0, 256*sizeof(float)));
- hipLaunchKernelGGL(( kEstimateQuantiles<T>), dim3(num_blocks), dim3(512), 0, 0, A, code, offset, std::numeric_limits<T>::max(), n);
+ hipLaunchKernelGGL(( kEstimateQuantiles<T>), dim3(num_blocks), dim3(512), 0, 0, A, code, offset, (std::numeric_limits<T>::max) (), n);
   CUDA_CHECK_RETURN(hipPeekAtLastError());
 }
 
