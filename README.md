@@ -40,11 +40,25 @@ ninja
 ```
 Change the arches in cmake file in line 210 as needed . eg, gfx1100 ,gfx1102..., 
 
+Option `CMakeLists2.txt` , rename `CMakeLists2.txt` to `CMakeLists.txt`
+
+Build use.
+
+```
+cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx1100" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -funroll-loops" -S .
+ninja
+
+```
+
+
 Build wheel , place builded `libbitsandbytes_rocm_nohipblaslt.dll` into `bitsandbytes\bitsandbytes`
+
 ```
 python setup.py bdist_wheel
 
 ```
+
+
 if you can't install it by pip , then unzip the wheel and place into pip install directory .
 Cureently , this is no torch for rocm available at windows. Not sure ,how to use it . 
 Note: amd don't support NF4 OR 4 BITS currently ,if you want enable hipblaslt , by comment the line 248 in cmakelists, `add_definitions(-DLEGACY_HIPBLAS_DIRECT=0)` or delete it .fix the conflicts bug in `hipcomon and hipblas`. (bugs will show when you build .) or keep use the no hipblaslt version.
