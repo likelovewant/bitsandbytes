@@ -29,39 +29,37 @@ pip install .
 
 2, Ninja, Cmake,
 
-3, add rocm/6.2/bin in the PATH
+3, Add rocm/6.2/bin in the PATH
 
 4, 
 ```
 git clone https://github.com/likelovewant/bitsandbytes,
+
 git checkout rocm_enabled_multi_backend
+
 pip install -r requirements-dev.txt
 ```  
  or edit those changes on this repo into other fork or upstream `multibackend`.
 
 5, edit few lines in  csrc/ops.hip, csrc/ops_hip.cuh,include/Algo-Direct-Common.h (by comparint the difference on this repo and upstream) and grab CMakeLists.txt from this repo.
 
-Build use .
-```
-cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -S .
+Build use.  ( Note:set DISABLE_HIPBLASLT=OFF if you arch has hipblaslt support otherwise =ON)
 
+```
+cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx1100" -DDISABLE_HIPBLASLT=ON -DCMAKE_BUILD_TYPE=Release -DLEGACY_HIPBLAS_DIRECT=1 -DCMAKE_CXX_FLAGS="-O3 -funroll-loops" -S .
 ninja
 
 ```
-Change the arches in cmake file in line 210 as needed . eg, gfx1100 ,gfx1102..., 
-
-Option `CMakeLists2.txt` , rename `CMakeLists2.txt` to `CMakeLists.txt`
-
-Build use.
+Build with HIPBLASLT
 
 ```
-cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx1100" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-O3 -funroll-loops" -S .
+cmake -G "Ninja" -DCOMPUTE_BACKEND=hip -DBNB_ROCM_ARCH="gfx1100" -DDISABLE_HIPBLASLT=OFF -DCMAKE_BUILD_TYPE=Release -DLEGACY_HIPBLAS_DIRECT=0 -DCMAKE_CXX_FLAGS="-O2 -funroll-loops" -S .
 ninja
 
 ```
 
 
-Build wheel , place builded `libbitsandbytes_rocm_nohipblaslt.dll` into `bitsandbytes\bitsandbytes`
+Build wheel , place builded `libbitsandbytes_rocm62_nohipblaslt.dll` and/or `libbitsandbytes_rocm62.dll`  into `bitsandbytes\bitsandbytes`
 
 ```
 python setup.py bdist_wheel
@@ -71,7 +69,7 @@ python setup.py bdist_wheel
 
 if you can't install it by pip , then unzip the wheel and place into pip install directory .
 Cureently , this is no torch for rocm available at windows. Not sure ,how to use it . 
-Note: amd don't support NF4 OR 4 BITS currently ,if you want enable hipblaslt , by comment the line 248 in cmakelists, `add_definitions(-DLEGACY_HIPBLAS_DIRECT=0)` or delete it .fix the conflicts bug in `hipcomon and hipblas`. (bugs will show when you build .) or keep use the no hipblaslt version.
+Note: amd don't support NF4 OR 4 BITS currently (without proper set,or don't support certain models) ,if you want enable hipblaslt , by ad `DDISABLE_HIPBLASLT=OFF` .fix the conflicts bug in `hipcomon and hipblas`. (-DLEGACY_HIPBLAS_DIRECT=1 (choose hipblas as the defination, -DLEGACY_HIPBLAS_DIRECT=0 ,hipcommon ) ).
 
 **For more details, please head to the official documentation page:**
 
